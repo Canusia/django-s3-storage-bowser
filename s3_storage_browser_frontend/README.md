@@ -18,19 +18,19 @@ npm run build:deploy
 
 This will:
 1. Build the React application using Vite
-2. Output the HTML file to `../storage-browser/templates/`
-3. Output the JS and CSS files to `../storage-browser/templates/assets/` with consistent filenames (no hashes)
-4. Move the JS and CSS files from `../storage-browser/templates/assets/` to `../storage-browser/static/`
+2. Output the HTML file to `../s3_storage_browser/templates/`
+3. Output the JS and CSS files to `../s3_storage_browser/templates/assets/` with consistent filenames (no hashes)
+4. Move the JS and CSS files from `../s3_storage_browser/templates/assets/` to `../s3_storage_browser/static/`
 5. Automatically update the HTML file to use Django's static template tags
 
 ## Configuration
 
 The build configuration is defined in `vite.config.ts`. It is set up to:
 
-- Output the HTML file to `../storage-browser/templates/`
+- Output the HTML file to `../s3_storage_browser/templates/`
 - Generate JS and CSS files with consistent names (no content hashes)
-- Initially output JS and CSS files to `../storage-browser/templates/assets/`
-- The `move-assets.js` script then moves these files to `../storage-browser/static/`
+- Initially output JS and CSS files to `../s3_storage_browser/templates/assets/`
+- The `move-assets.js` script then moves these files to `../s3_storage_browser/static/`
 - A custom Vite plugin (`djangoTemplatePlugin`) automatically updates the HTML file to use Django's static template tags
 
 ## Integration with Django
@@ -38,8 +38,7 @@ The build configuration is defined in `vite.config.ts`. It is set up to:
 The application is integrated with Django:
 
 1. The HTML template uses Django's `{% load static %}` and `{% static '...' %}` tags to reference the static files
-2. The Django view in `webapp/storage-browser/views.py` renders the template
-3. The static files are served by Django's static file handling
+2. The static files are served by Django's static file handling
 
 ## Browser Caching
 

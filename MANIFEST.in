@@ -1,2 +1,2 @@
-recursive-include storage-browser/static *
-recursive-include storage-browser/templates *
+recursive-include s3_storage_browser/static *
+recursive-include s3_storage_browser/templates *
