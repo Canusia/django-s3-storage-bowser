@@ -1,7 +1,5 @@
 
-============
-ah-django-s3-storage-browser
-============
+## ah-django-s3-storage-browser
 
 ah-django-s3-storage-browser is a Django app to display a S3 storage browser.
 Works via AWS session credentials that are fetched via a backend API.
