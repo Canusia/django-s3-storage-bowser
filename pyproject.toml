@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ah-django-s3-storage-browser"
 version = "0.1"
+description = "A Django app to show an S3 storage browser"
+readme = "README.rst"
+requires-python = ">= 3.8"
 dependencies = [
     "django>=4.2",
 ]
-description = "A Django app to conduct web-based polls."
-readme = "README.rst"
-requires-python = ">= 3.8"
 authors = [
     {name = "Chris Chomicki", email = "ndlyga@apphammer.co"},
     {name = "Nick Lyga", email = "ndlyga@apphammer.co"},
@@ -37,4 +37,4 @@ classifiers = [
 Homepage = "https://www.apphammer.co/"
 
 [tool.setuptools.packages.find]
-where = ["./s3_storage_browser"]
+where = ["."]
