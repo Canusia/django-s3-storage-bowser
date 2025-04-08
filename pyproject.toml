@@ -35,3 +35,6 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://www.apphammer.co/"
+
+[tool.setuptools]
+py-modules = ["s3_storage_browser"]
