@@ -8,16 +8,15 @@ Quick start
 -----------
 
 1. Add "s3_storage_browser" to your INSTALLED_APPS setting like this::
-
+```
     INSTALLED_APPS = [
         ...,
         "s3_storage_browser.apps.StorageBrowserConfig",
     ]
+```
 
 2. Include the s3_storage_browser URLconf in your project urls.py like this::
 
     path("storagebrowser/", include("s3_storage_browser.views.storage_browser_view")),
 
-3. Run ``python manage.py migrate`` to create the models.
-
-4. Start the development server and visit the the ``/storagebrowser/`` URL to view the S3 storage browser.
+3. Start the development server and visit the the ``/storagebrowser/`` URL to view the S3 storage browser.
