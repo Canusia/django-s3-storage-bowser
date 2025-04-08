@@ -11,12 +11,12 @@ Quick start
 
     INSTALLED_APPS = [
         ...,
-        "ah-django-s3-storage-browser",
+        "ah_django_s3_storage_browser.apps.StorageBrowserConfig",
     ]
 
 2. Include the ah-s3-storage-browser URLconf in your project urls.py like this::
 
-    path("storagebrowser/", include("ah-s3-storage-s3-browser.storage_browser_view")),
+    path("storagebrowser/", include("ah_django_s3_storage_browser.storage_browser_view")),
 
 3. Run ``python manage.py migrate`` to create the models.
 
