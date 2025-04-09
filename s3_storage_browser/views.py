@@ -12,4 +12,4 @@ def storage_browser_view(request):
     context = {
         'storage_browser_s3_bucket_name': settings.AWS_STORAGE_BUCKET_NAME
     }
-    return render(request, 'index.html', context)
+    return render(request, 's3_storage_browser/index.html', context)

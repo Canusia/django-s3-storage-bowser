@@ -9,7 +9,7 @@ const djangoTemplatePlugin = () => {
     name: 'django-template-plugin',
     closeBundle: () => {
       // Path to the generated HTML file
-      const htmlPath = resolve(__dirname, '../s3_storage_browser/templates/index.html');
+      const htmlPath = resolve(__dirname, '../s3_storage_browser/templates/s3_storage_browser/index.html');
 
       // Read the generated HTML file
       let html = readFileSync(htmlPath, 'utf-8');
@@ -45,7 +45,7 @@ export default defineConfig({
     djangoTemplatePlugin(),
   ],
   build: {
-    outDir: '../s3_storage_browser/templates',
+    outDir: '../s3_storage_browser/templates/s3_storage_browser',
     emptyOutDir: true,
     rollupOptions: {
       output: {

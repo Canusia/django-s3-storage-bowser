@@ -18,7 +18,7 @@ npm run build:deploy
 
 This will:
 1. Build the React application using Vite
-2. Output the HTML file to `../s3_storage_browser/templates/`
+2. Output the HTML file to `../s3_storage_browser/templates/s3_storage_browser/`
 3. Output the JS and CSS files to `../s3_storage_browser/templates/assets/` with consistent filenames (no hashes)
 4. Move the JS and CSS files from `../s3_storage_browser/templates/assets/` to `../s3_storage_browser/static/`
 5. Automatically update the HTML file to use Django's static template tags
@@ -27,7 +27,7 @@ This will:
 
 The build configuration is defined in `vite.config.ts`. It is set up to:
 
-- Output the HTML file to `../s3_storage_browser/templates/`
+- Output the HTML file to `../s3_storage_browser/templates/s3_storage_browser/`
 - Generate JS and CSS files with consistent names (no content hashes)
 - Initially output JS and CSS files to `../s3_storage_browser/templates/assets/`
 - The `move-assets.js` script then moves these files to `../s3_storage_browser/static/`

@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define paths
-const assetsDir = path.resolve(__dirname, '../s3_storage_browser/templates/assets');
+const assetsDir = path.resolve(__dirname, '../s3_storage_browser/templates/s3_storage_browser/assets');
 const staticDir = path.resolve(__dirname, '../s3_storage_browser/static');
 
 // Create static directory if it doesn't exist
