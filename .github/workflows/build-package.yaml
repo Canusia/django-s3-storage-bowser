@@ -3,6 +3,8 @@ name: Build and Deploy Frontend Package
 on:
   push:
     branches: [ main ]
+    paths:
+      - 's3_storage_browser_frontend/**'
   workflow_dispatch:  # Allow manual triggering
 
 permissions:
