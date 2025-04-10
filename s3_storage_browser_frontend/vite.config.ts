@@ -15,7 +15,7 @@ const djangoTemplatePlugin = () => {
       let html = readFileSync(htmlPath, 'utf-8');
 
       // Load Django static template tags
-      html = `{% extends "admin/base_site.html" %}\n\n{% load static %}\n\n{% block content %}\n${html}\n{% endblock %}\n`;
+      html = `{% load static %}\n\n{% block content %}\n${html}\n{% endblock %}\n`;
 
       // Inject the Django environment variable script before the first <script> tag with proper indentation
       const envScript = `

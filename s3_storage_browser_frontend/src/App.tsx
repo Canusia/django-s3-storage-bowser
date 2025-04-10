@@ -133,7 +133,6 @@ const App = () => {
 
   return (
     <div className="s3-browser-container">
-      <h1>S3 Storage Browser</h1>
       {error && <div className="error-message">{error}</div>}
       {isAuthenticated ? (
         <StorageBrowser />
