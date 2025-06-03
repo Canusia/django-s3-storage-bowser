@@ -1,11 +1,11 @@
 # Django S3 Storage Browser
 
-`ah-django-s3-storage-browser` is a Django app that provides S3 storage browser functionality with AWS session credentials management. It includes both a storage browser view and an API endpoint for fetching AWS credentials.
+`ah-django-s3-storage-browser` is a Django app that provides S3 storage browser functionality with AWS credentials management via role assumption. It includes both a storage browser view and an API endpoint for fetching AWS credentials.
 
 ## Features
 
 - **Storage Browser View**: A web interface for browsing S3 storage
-- **AWS Credentials API**: RESTful API endpoint for obtaining temporary AWS session tokens
+- **AWS Credentials API**: RESTful API endpoint for obtaining temporary AWS credentials via role assumption
 - **Permission Management**: Built-in Django permissions for controlling access
 - **Easy Integration**: Simple setup for existing Django projects
 
@@ -82,12 +82,13 @@ urlpatterns = [
 
 ### 3. Environment Variables
 
-Set the required AWS environment variables:
+Set the required AWS environment variable:
 
 ```bash
-export AWS_ACCESS_KEY_ID=your_access_key_id
-export AWS_SECRET_ACCESS_KEY=your_secret_access_key
+export S3_STORAGE_BROWSER_ROLE_ARN=arn:aws:iam::123456789012:role/YourRoleName
 ```
+
+The `S3_STORAGE_BROWSER_ROLE_ARN` is required for the AWS Credentials API to assume the specified IAM role.
 
 ### 4. Django Settings
 
@@ -118,11 +119,11 @@ The storage browser view provides a web interface for browsing S3 storage. It re
 
 ### AWS Credentials API
 
-The API endpoint provides temporary AWS session tokens for client-side S3 operations.
+The API endpoint provides temporary AWS credentials by assuming an IAM role for client-side S3 operations.
 
 **Endpoint**: `POST /api/awscreds/`
 **Authentication**: Requires authenticated user
-**Response**: JSON object containing temporary AWS credentials
+**Response**: JSON object containing temporary AWS credentials from the assumed role
 
 Example response:
 ```json
@@ -169,28 +170,28 @@ path('admin/storagebrowser/',
      name='storage_browser_admin'),
 ```
 
-### AWS Session Token Settings
+### AWS Role Assumption Settings
 
-The AWS credentials API uses the default AWS STS settings. You can customize the session duration and other parameters by modifying the `AwsCredentialsApiView` class.
+The AWS credentials API uses the STS assume_role operation with default settings (1-hour session duration). The role session name is set to "S3StorageBrowserSession" for tracking purposes. You can customize these parameters by modifying the `AwsCredentialsApiView` class.
 
 ## Security Considerations
 
 1. **Environment Variables**: Always use environment variables for AWS credentials, never hardcode them
 2. **Permissions**: Use Django's permission system to control access to the storage browser
 3. **HTTPS**: Always use HTTPS in production when transmitting AWS credentials
-4. **Session Tokens**: The API returns temporary session tokens with limited lifetime for security
+4. **Temporary Credentials**: The API returns temporary credentials from assumed roles with limited lifetime for security
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Missing AWS Credentials**: Ensure `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are set
+1. **Missing AWS Credentials**: Ensure `S3_STORAGE_BROWSER_ROLE_ARN` is set
 2. **Permission Denied**: Check that users have the required permissions
 3. **Template Not Found**: Verify template paths and ensure templates are in the correct location
 
 ### Error Messages
 
-- `AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY not set in environment variables`: Set the required environment variables
+- `S3_STORAGE_BROWSER_ROLE_ARN environment variable not set`: Set the IAM role ARN environment variable
 - `Permission denied`: User lacks the required permissions to access the storage browser
 
 ## Dependencies
