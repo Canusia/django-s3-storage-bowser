@@ -23,8 +23,21 @@ def storage_browser_view(request):
 class AwsCredentialsApiView(views.APIView):
     def post(self, request):
         try:
+            # Get role ARN from environment variable
+            role_arn = os.environ.get('S3_STORAGE_BROWSER_ROLE_ARN')
+            if not role_arn:
+                return JsonResponse(
+                    {"message": "S3_STORAGE_BROWSER_ROLE_ARN environment variable not set"}, 
+                    status=500
+                )
+            
+            # Create STS client and assume role
             client = boto3.client('sts')
-            response = client.get_session_token()
+            response = client.assume_role(
+                RoleArn=role_arn,
+                RoleSessionName='S3StorageBrowserSession'
+            )
+            
             return JsonResponse(response['Credentials'])
         except Exception as e:
             msg = {"message": str(e)}
