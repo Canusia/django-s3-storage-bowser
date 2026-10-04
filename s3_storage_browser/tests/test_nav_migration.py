@@ -104,3 +104,25 @@ class AddCeNavMigrationTests(TestCase):
         nav.remove_nav(apps, None)
         [menu] = self.ce_menus()
         self.assertEqual(menu, CE_MENU)
+
+    def test_repoints_hand_added_items_at_the_removed_url_name(self):
+        # Hosts used to mount the view as name="storage_browser"; a menu item
+        # still pointing there makes draw_menu emit a broken <a>.
+        legacy_top = {'type': 'nav-item', 'icon': 'x', 'name': 'files',
+                      'label': 'Files', 'url': 'storage_browser'}
+        legacy_sub = {'type': 'nav-item', 'icon': 'y', 'name': 'settings',
+                      'label': 'Settings', 'sub_menu': [
+                          {'name': 'storage', 'label': 'Storage', 'url': 'storage_browser'}]}
+        self.seed(ce_menu=[legacy_top, legacy_sub])
+        self.run_add()
+        [menu] = self.ce_menus()
+        self.assertEqual(menu[0]['url'], 's3_storage_browser:browser')
+        self.assertEqual(menu[1]['sub_menu'][0]['url'], 's3_storage_browser:browser')
+        # an existing item now reaches the browser, so no duplicate is added
+        self.assertNotIn('storage_browser', [i['name'] for i in menu])
+
+    def test_existing_item_named_storage_browser_is_repointed(self):
+        self.seed(ce_menu=[dict(nav.NAV_ENTRY, url='storage_browser')])
+        self.run_add()
+        [menu] = self.ce_menus()
+        self.assertEqual(menu, [nav.NAV_ENTRY])

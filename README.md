@@ -85,7 +85,10 @@ def storage_browser_context(request):
 Migration `0002_add_ce_nav` adds a **File Storage** item to the CE menu
 (`cis.settings.menu`, every campus row). It runs only when `cis` is installed
 and `s3_storage_browser:browser` resolves — so include the URLs **before**
-migrating. If it was skipped, add the item in the menu setting by hand:
+migrating. Existing menu items that point at the pre-0.2.0 URL name `storage_browser`
+are re-pointed at `s3_storage_browser:browser` (that name stops resolving once
+the URLs are included, which would break the sidebar). If the migration was
+skipped, add the item in the menu setting by hand:
 
 ```json
 {"type": "nav-item", "icon": "fas fa-fw fa-folder-open", "name": "storage_browser", "label": "File Storage", "url": "s3_storage_browser:browser"}
@@ -102,7 +105,8 @@ credentials:
 
 The session policy allows only `s3:ListBucket`/`s3:GetBucketLocation` on the
 bucket and `s3:GetObject`/`PutObject`/`DeleteObject`/`AbortMultipartUpload`/
-`ListMultipartUploadParts` on its objects. A session policy can only narrow
+`ListMultipartUploadParts` on its objects, plus `kms:Decrypt`/`kms:GenerateDataKey`
+only via S3 (for SSE-KMS buckets). A session policy can only narrow
 the role, never widen it. Callers who fail the access check get 403; AWS
 errors are logged and returned as a generic 502.
 

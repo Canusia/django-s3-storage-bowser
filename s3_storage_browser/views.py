@@ -72,12 +72,13 @@ def storage_browser_view(request, template_name='s3_storage_browser/index.html')
     return render(request, template_name, context)
 
 
-def session_policy(bucket):
+def session_policy(bucket, region):
     """
     STS session policy limiting the assumed role to ``bucket``.
 
     A session policy can only narrow what the role already allows, so this
-    is safe to send whatever the role's own policy says.
+    is safe to send whatever the role's own policy says. KMS is allowed only
+    via S3, so SSE-KMS buckets keep working.
     """
     return json.dumps({
         'Version': '2012-10-17',
@@ -97,6 +98,14 @@ def session_policy(bucket):
                     's3:ListMultipartUploadParts',
                 ],
                 'Resource': f'arn:aws:s3:::{bucket}/*',
+            },
+            {
+                'Effect': 'Allow',
+                'Action': ['kms:Decrypt', 'kms:GenerateDataKey'],
+                'Resource': '*',
+                'Condition': {
+                    'StringEquals': {'kms:ViaService': f's3.{region}.amazonaws.com'},
+                },
             },
         ],
     })
@@ -124,7 +133,7 @@ class AwsCredentialsApiView(views.APIView):
                 DurationSeconds=getattr(
                     settings, 'S3_STORAGE_BROWSER_SESSION_SECONDS',
                     DEFAULT_SESSION_SECONDS),
-                Policy=session_policy(settings.AWS_STORAGE_BUCKET_NAME),
+                Policy=session_policy(settings.AWS_STORAGE_BUCKET_NAME, _region()),
             )
         except Exception:
             logger.exception('Could not assume the storage browser role')

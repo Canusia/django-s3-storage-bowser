@@ -71,11 +71,26 @@ class CredentialsApiTests(TestCase):
         resources = set()
         for statement in policy['Statement']:
             self.assertEqual(statement['Effect'], 'Allow')
+            if all(a.startswith('kms:') for a in statement['Action']):
+                continue
             res = statement['Resource']
             resources.update([res] if isinstance(res, str) else res)
         self.assertEqual(
             resources,
             {f'arn:aws:s3:::{BUCKET}', f'arn:aws:s3:::{BUCKET}/*'})
+
+    @override_settings(AWS_REGION_NAME='us-west-2', S3_STORAGE_BROWSER_REGION=None,
+                       AWS_S3_REGION_NAME=None)
+    def test_kms_is_allowed_only_through_s3(self):
+        # SSE-KMS buckets: without kms rights in the session policy every
+        # Get/Put fails, whatever the role allows.
+        self.post_as(make_user(is_staff=True))
+        policy = json.loads(self.sts.assume_role.call_args.kwargs['Policy'])
+        [kms] = [s for s in policy['Statement']
+                 if all(a.startswith('kms:') for a in s['Action'])]
+        self.assertEqual(set(kms['Action']), {'kms:Decrypt', 'kms:GenerateDataKey'})
+        self.assertEqual(kms['Condition'],
+                         {'StringEquals': {'kms:ViaService': 's3.us-west-2.amazonaws.com'}})
 
     @override_settings(S3_STORAGE_BROWSER_SESSION_SECONDS=900)
     def test_session_duration_is_configurable(self):

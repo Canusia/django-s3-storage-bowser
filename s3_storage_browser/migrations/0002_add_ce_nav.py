@@ -10,6 +10,11 @@ Skipped entirely when:
   emits a half-built <a> when reverse() fails, which breaks the sidebar;
 - no menu Setting exists yet (fresh install; add the item in the UI).
 
+Items a host added by hand against the pre-0.2.0 URL name
+``storage_browser`` are re-pointed at the namespaced view (that name no
+longer resolves once the host includes ``s3_storage_browser.urls``), and
+count as the entry, so no duplicate is added.
+
 Idempotent; reversed by removing the item by name.
 """
 import json
@@ -28,6 +33,7 @@ NAV_ENTRY = {
     'label': 'File Storage',
     'url': 's3_storage_browser:browser',
 }
+LEGACY_URL_NAME = 'storage_browser'
 
 
 def _menu_settings(apps):
@@ -47,9 +53,15 @@ def _patch(setting, change):
     if not isinstance(items, list):
         return
     new_items = change(items)
-    if new_items is not items:
+    if new_items != json.loads(raw):
         setting.value[ROLE_KEY] = json.dumps(new_items)
         setting.save(update_fields=['value'])
+
+
+def _all_items(items):
+    for item in items:
+        yield item
+        yield from item.get('sub_menu') or []
 
 
 def add_nav(apps, schema_editor):
@@ -59,7 +71,11 @@ def add_nav(apps, schema_editor):
         return
 
     def add(items):
-        if any(i.get('name') == NAV_ENTRY['name'] for i in items):
+        for item in _all_items(items):
+            if item.get('url') == LEGACY_URL_NAME:
+                item['url'] = NAV_ENTRY['url']
+        if any(i.get('name') == NAV_ENTRY['name'] or i.get('url') == NAV_ENTRY['url']
+               for i in _all_items(items)):
             return items
         return [*items, dict(NAV_ENTRY)]
 
