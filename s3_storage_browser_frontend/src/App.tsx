@@ -1,146 +1,61 @@
-import { useState, useEffect } from 'react';
-import { Amplify } from 'aws-amplify';
+import { useEffect, useState } from 'react';
 import '@aws-amplify/ui-react/styles.css';
 import '@aws-amplify/ui-react-storage/styles.css';
-import {
-  createStorageBrowser,
-} from '@aws-amplify/ui-react-storage/browser';
+import { createStorageBrowser } from '@aws-amplify/ui-react-storage/browser';
 
-interface Credentials {
-  accessKeyId: string;
-  secretAccessKey: string;
-  sessionToken: string;
-  expiration: Date;
-};
+import { readConfig } from './config';
+import { createCredentialsProvider } from './credentials';
 
-const BUCKET_NAME = (window as any).STORAGE_BROWSER_S3_BUCKET_NAME as string;
+const CONFIG = readConfig();
+const getCredentials = createCredentialsProvider(CONFIG.credentialsUrl);
 
-// Configure Amplify
-Amplify.configure({
-  Storage: {
-    S3: {
-      bucket: BUCKET_NAME, // S3 bucket name
-      region: 'us-east-1', // AWS region
-    },
+// Created once: building it inside render would remount the browser (and
+// drop its navigation state) on every re-render.
+const { StorageBrowser } = createStorageBrowser({
+  config: {
+    region: CONFIG.region,
+    listLocations: async () => ({
+      items: [{
+        bucket: CONFIG.bucket,
+        prefix: '',
+        id: CONFIG.bucket,
+        type: 'BUCKET',
+        permissions: ['get', 'list', 'write', 'delete'],
+      }],
+      nextToken: undefined,
+    }),
+    // The browser caches these per location and calls back on expiry.
+    getLocationCredentials: async () => ({ credentials: await getCredentials() }),
+    registerAuthListener: () => {},
   },
 });
 
-// Helper function to get CSRF token
-const getCookie = (name: string) => {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-
-// Custom auth provider for Amplify
-const customAuthProvider = {
-  // Get credentials from Django backend
-  async getCredentials() {
-    try {
-      const response = await fetch('/api/awscreds/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken') || '',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get AWS credentials');
-      }
-      
-      const credentials = await response.json();
-      
-      return {
-        accessKeyId: credentials.AccessKeyId,
-        secretAccessKey: credentials.SecretAccessKey,
-        sessionToken: credentials.SessionToken,
-        expiration: new Date(credentials.Expiration)
-      };
-    } catch (error) {
-      console.error('Error getting credentials:', error);
-      throw error;
-    }
-  }
-};
+type Status = 'loading' | 'ready' | 'error';
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [error, setError] = useState('');
-  const [credentials, setCredentials] = useState<Credentials | undefined>();
+  const [status, setStatus] = useState<Status>('loading');
 
   useEffect(() => {
-    const fetchCredentials = async () => {
-      try {
-        const credentials = await customAuthProvider.getCredentials();
-        setIsAuthenticated(true);
-        setCredentials(credentials as Credentials);
-        setError('');
-      } catch (error) {
-        setCredentials(undefined);
-        setIsAuthenticated(false);
-        setError('Failed to authenticate with AWS. Please check your credentials.');
-      }
-    };
-
-    fetchCredentials();
+    getCredentials()
+      .then(() => setStatus('ready'))
+      .catch((error) => {
+        console.error('Storage browser credentials:', error);
+        setStatus('error');
+      });
   }, []);
 
-  if (!credentials) {
-    return <div>Loading...</div>;
+  if (status === 'error') {
+    return (
+      <div className="alert alert-danger" role="alert">
+        Could not connect to file storage. Reload the page to try again; if
+        it keeps failing, contact your administrator.
+      </div>
+    );
   }
-
-  const { StorageBrowser } = createStorageBrowser({
-    credentials,
-    bucket: BUCKET_NAME,
-    config: {
-      listLocations: async (input = {}) => {
-        const { } = input;
-        return {
-          items: [{
-            bucket: BUCKET_NAME as string,
-            prefix: '',
-            id: '1',
-            key: '', 
-            region: 'us-east-1',
-            type: 'BUCKET',
-            permissions: ['get', 'list', 'write', 'delete'],
-            scope: `s3://${BUCKET_NAME}`,
-          }],
-          nextToken: '',
-        }
-      },
-      getLocationCredentials: async ({ }) => {
-        return {
-          credentials: credentials as any,
-        };
-      },
-      region: 'us-east-1',
-      registerAuthListener: (_) => {
-        
-      }
-    },
- });
-
-  return (
-    <div className="s3-browser-container">
-      {error && <div className="error-message">{error}</div>}
-      {isAuthenticated ? (
-        <StorageBrowser />
-      ) : (
-        <p>Loading credentials...</p>
-      )}
-    </div>
-  );
+  if (status === 'loading') {
+    return <p>Loading file storage…</p>;
+  }
+  return <StorageBrowser />;
 };
 
 export default App;
