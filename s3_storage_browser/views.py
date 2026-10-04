@@ -40,6 +40,12 @@ def _credentials_url():
         return LEGACY_CREDENTIALS_URL
 
 
+def _csrf_cookie_name():
+    if settings.CSRF_USE_SESSIONS or settings.CSRF_COOKIE_HTTPONLY:
+        return None  # JavaScript cannot read it
+    return settings.CSRF_COOKIE_NAME
+
+
 def storage_browser_view(request, template_name='s3_storage_browser/index.html'):
     """
     The storage browser page.
@@ -62,8 +68,11 @@ def storage_browser_view(request, template_name='s3_storage_browser/index.html')
             'bucket': settings.AWS_STORAGE_BUCKET_NAME,
             'region': _region(),
             'credentialsUrl': _credentials_url(),
-            # Handed over directly: tenants rename the CSRF cookie.
+            # Tenants rename the CSRF cookie, so name it rather than have the
+            # bundle guess. The bundle re-reads the cookie per request (a login
+            # in another tab rotates it) and falls back to csrfToken.
             'csrfToken': get_token(request),
+            'csrfCookieName': _csrf_cookie_name(),
         },
     }
     extra_context = getattr(settings, 'S3_STORAGE_BROWSER_EXTRA_CONTEXT', None)
@@ -96,6 +105,9 @@ def session_policy(bucket, region):
                     's3:DeleteObject',
                     's3:AbortMultipartUpload',
                     's3:ListMultipartUploadParts',
+                    # CopyObject's default TaggingDirective=COPY
+                    's3:GetObjectTagging',
+                    's3:PutObjectTagging',
                 ],
                 'Resource': f'arn:aws:s3:::{bucket}/*',
             },
@@ -129,7 +141,8 @@ class AwsCredentialsApiView(views.APIView):
         try:
             response = boto3.client('sts').assume_role(
                 RoleArn=role_arn,
-                RoleSessionName='S3StorageBrowserSession',
+                # Per user, so CloudTrail shows who read, wrote or deleted.
+                RoleSessionName=f'storage-browser-{request.user.pk}'[:64],
                 DurationSeconds=getattr(
                     settings, 'S3_STORAGE_BROWSER_SESSION_SECONDS',
                     DEFAULT_SESSION_SECONDS),

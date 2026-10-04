@@ -74,6 +74,7 @@ class StorageBrowserViewTests(TestCase):
         resp = self.get_as(make_user(is_staff=True))
         config = self.config(resp)
         config.pop('csrfToken')
+        config.pop('csrfCookieName')
         self.assertEqual(config, {
             'bucket': BUCKET,
             'region': 'eu-west-1',
@@ -140,3 +141,20 @@ class StorageBrowserViewTests(TestCase):
     def test_region_defaults_to_us_east_1(self):
         resp = self.get_as(make_user(is_staff=True))
         self.assertEqual(self.config(resp)['region'], 'us-east-1')
+
+    @override_settings(CSRF_COOKIE_NAME='tenant_csrftoken')
+    def test_config_names_the_csrf_cookie(self):
+        # The bundle re-reads this cookie per request, so a token rotated by
+        # a login in another tab does not break the next credentials refresh.
+        config = self.config(self.get_as(make_user(is_staff=True)))
+        self.assertEqual(config['csrfCookieName'], 'tenant_csrftoken')
+
+    @override_settings(CSRF_COOKIE_HTTPONLY=True)
+    def test_no_csrf_cookie_name_when_javascript_cannot_read_it(self):
+        config = self.config(self.get_as(make_user(is_staff=True)))
+        self.assertIsNone(config['csrfCookieName'])
+
+    @override_settings(CSRF_USE_SESSIONS=True)
+    def test_no_csrf_cookie_name_when_token_lives_in_the_session(self):
+        config = self.config(self.get_as(make_user(is_staff=True)))
+        self.assertIsNone(config['csrfCookieName'])

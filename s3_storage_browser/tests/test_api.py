@@ -65,7 +65,6 @@ class CredentialsApiTests(TestCase):
         self.post_as(make_user(is_staff=True))
         kwargs = self.sts.assume_role.call_args.kwargs
         self.assertEqual(kwargs['RoleArn'], ROLE_ARN)
-        self.assertEqual(kwargs['RoleSessionName'], 'S3StorageBrowserSession')
         self.assertEqual(kwargs['DurationSeconds'], 3600)
         policy = json.loads(kwargs['Policy'])
         resources = set()
@@ -91,6 +90,19 @@ class CredentialsApiTests(TestCase):
         self.assertEqual(set(kms['Action']), {'kms:Decrypt', 'kms:GenerateDataKey'})
         self.assertEqual(kms['Condition'],
                          {'StringEquals': {'kms:ViaService': 's3.us-west-2.amazonaws.com'}})
+
+    def test_session_name_identifies_the_user_for_cloudtrail(self):
+        user = make_user(is_staff=True)
+        self.post_as(user)
+        self.assertEqual(self.sts.assume_role.call_args.kwargs['RoleSessionName'],
+                         f'storage-browser-{user.pk}')
+
+    def test_session_allows_object_tagging_for_copy(self):
+        # CopyObject's default TaggingDirective=COPY reads and writes tags.
+        self.post_as(make_user(is_staff=True))
+        policy = json.loads(self.sts.assume_role.call_args.kwargs['Policy'])
+        actions = {a for s in policy['Statement'] for a in s['Action']}
+        self.assertTrue({'s3:GetObjectTagging', 's3:PutObjectTagging'} <= actions)
 
     @override_settings(S3_STORAGE_BROWSER_SESSION_SECONDS=900)
     def test_session_duration_is_configurable(self):

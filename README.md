@@ -62,7 +62,9 @@ and fills two blocks, so the base must define both:
 Anything your base template needs — a navigation menu, say — comes from
 `S3_STORAGE_BROWSER_EXTRA_CONTEXT`. To place the browser inside a page of your
 own instead, `{% include "s3_storage_browser/_app.html" %}` with
-`s3_storage_browser_config` in the context.
+`s3_storage_browser_config` in the context. Amplify's page-level CSS (`html`,
+`body`, bare form controls) is scoped at build time to the
+`.s3-storage-browser` wrapper, so it does not restyle your layout.
 
 ### MyCE hosts
 
@@ -105,10 +107,12 @@ credentials:
 
 The session policy allows only `s3:ListBucket`/`s3:GetBucketLocation` on the
 bucket and `s3:GetObject`/`PutObject`/`DeleteObject`/`AbortMultipartUpload`/
-`ListMultipartUploadParts` on its objects, plus `kms:Decrypt`/`kms:GenerateDataKey`
+`ListMultipartUploadParts`/`GetObjectTagging`/`PutObjectTagging` on its objects, plus `kms:Decrypt`/`kms:GenerateDataKey`
 only via S3 (for SSE-KMS buckets). A session policy can only narrow
 the role, never widen it. Callers who fail the access check get 403; AWS
-errors are logged and returned as a generic 502.
+errors are logged and returned as a generic 502. Each session is named
+`storage-browser-<user pk>`, so CloudTrail attributes S3 calls to the user.
+Inactive users are always refused, whatever the access check says.
 
 ## Upgrading from 0.1
 
@@ -128,6 +132,7 @@ errors are logged and returned as a generic 502.
 cd s3_storage_browser_frontend
 npm ci
 npm run build      # tsc + vite → ../s3_storage_browser/static/s3_storage_browser/
+npm test           # vitest (run after build: one test checks the built CSS)
 npm run dev        # standalone dev server (config in index.html)
 ```
 

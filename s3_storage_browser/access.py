@@ -13,7 +13,7 @@ PERMISSION = 's3_storage_browser.can_access_s3_storage_browser'
 
 def default_access_check(user):
     """Staff, or anyone granted the package permission (superusers included)."""
-    return user.is_active and (user.is_staff or user.has_perm(PERMISSION))
+    return user.is_staff or user.has_perm(PERMISSION)
 
 
 def has_access(user):
@@ -23,7 +23,9 @@ def has_access(user):
     ``settings.S3_STORAGE_BROWSER_ACCESS_CHECK`` — a dotted path to a
     ``callable(user) -> bool`` — replaces the default check when set.
     """
-    if user is None or not user.is_authenticated:
+    if user is None or not user.is_authenticated or not user.is_active:
+        # Checked here, not left to the override: some auth backends still
+        # return inactive users for a live session.
         return False
     dotted = getattr(settings, 'S3_STORAGE_BROWSER_ACCESS_CHECK', None)
     check = import_string(dotted) if dotted else default_access_check
