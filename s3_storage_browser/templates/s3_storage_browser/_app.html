@@ -1,0 +1,5 @@
+{% load static %}
+{{ s3_storage_browser_config|json_script:"s3-storage-browser-config" }}
+<link rel="stylesheet" href="{% static 's3_storage_browser/index.css' %}">
+<div class="s3-storage-browser"><div id="root"></div></div>
+<script type="module" src="{% static 's3_storage_browser/index.js' %}"></script>

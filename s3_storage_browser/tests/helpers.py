@@ -36,3 +36,7 @@ def login(client, user):
     trackers that need a real request IP), which these tests do not exercise."""
     with mock.patch.object(user_logged_in, 'send'):
         client.force_login(user)
+
+
+def menu_context(request):
+    return {'menu': '<li id="hook-menu-item">Hook</li>'}

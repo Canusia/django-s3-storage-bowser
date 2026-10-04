@@ -1,0 +1,15 @@
+{% comment %}
+Default base for the storage browser page. A host replaces it with
+settings.S3_STORAGE_BROWSER_BASE_TEMPLATE; any replacement must provide
+the same two blocks: `title` and `body`.
+{% endcomment %}<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body>
+    {% block body %}{% endblock %}
+  </body>
+</html>

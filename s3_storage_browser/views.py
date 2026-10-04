@@ -4,27 +4,69 @@ import os
 
 import boto3
 from django.conf import settings
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.urls import NoReverseMatch, reverse
+from django.utils.module_loading import import_string
 from rest_framework import views
 
-from .access import HasStorageBrowserAccess
+from .access import HasStorageBrowserAccess, has_access
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SESSION_SECONDS = 3600
+DEFAULT_REGION = 'us-east-1'
+DEFAULT_BASE_TEMPLATE = 's3_storage_browser/standalone.html'
+LEGACY_CREDENTIALS_URL = '/api/awscreds/'
 
 
-@staff_member_required
-def storage_browser_view(request):
-    '''
-    Returns view for S3 storage browser
-    '''
+def _region():
+    for name in ('S3_STORAGE_BROWSER_REGION', 'AWS_S3_REGION_NAME', 'AWS_REGION_NAME'):
+        value = getattr(settings, name, None)
+        if value:
+            return value
+    return DEFAULT_REGION
+
+
+def _credentials_url():
+    try:
+        return reverse('s3_storage_browser:credentials')
+    except NoReverseMatch:
+        # Hosts that mount the views by hand (pre-0.2.0 README) serve the
+        # API here.
+        return LEGACY_CREDENTIALS_URL
+
+
+def storage_browser_view(request, template_name='s3_storage_browser/index.html'):
+    """
+    The storage browser page.
+
+    The page extends ``settings.S3_STORAGE_BROWSER_BASE_TEMPLATE`` (which must
+    provide ``title`` and ``body`` blocks), and ``S3_STORAGE_BROWSER_EXTRA_CONTEXT``
+    — a dotted path to ``callable(request) -> dict`` — adds host context such
+    as a navigation menu.
+    """
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    if not has_access(request.user):
+        raise PermissionDenied
+
     context = {
-        'storage_browser_s3_bucket_name': settings.AWS_STORAGE_BUCKET_NAME
+        's3_storage_browser_base_template': (
+            getattr(settings, 'S3_STORAGE_BROWSER_BASE_TEMPLATE', None)
+            or DEFAULT_BASE_TEMPLATE),
+        's3_storage_browser_config': {
+            'bucket': settings.AWS_STORAGE_BUCKET_NAME,
+            'region': _region(),
+            'credentialsUrl': _credentials_url(),
+        },
     }
-    return render(request, 's3_storage_browser/index.html', context)
+    extra_context = getattr(settings, 'S3_STORAGE_BROWSER_EXTRA_CONTEXT', None)
+    if extra_context:
+        context.update(import_string(extra_context)(request))
+    return render(request, template_name, context)
 
 
 def session_policy(bucket):

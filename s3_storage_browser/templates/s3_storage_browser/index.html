@@ -1,24 +1,7 @@
-{% load static %}
+{% extends s3_storage_browser_base_template %}
 
-{% block content %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.ico' %}" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Storage Browser</title>
-    
-    <script>
-        window.STORAGE_BROWSER_S3_BUCKET_NAME = "{{ storage_browser_s3_bucket_name|escapejs }}";
-    </script>
-    
-    <script type="module" crossorigin src="{% static 'index.js' %}"></script>
-    <link rel="stylesheet" crossorigin href="{% static 'index.css' %}">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+{% block title %}Storage Browser{% endblock %}
 
+{% block body %}
+{% include "s3_storage_browser/_app.html" %}
 {% endblock %}
