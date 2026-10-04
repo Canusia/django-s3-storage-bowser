@@ -1,2 +1,6 @@
 dist/
-ah_django_s3_storage_browser.egg-info
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+node_modules/

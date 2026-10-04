@@ -1,217 +1,138 @@
 # Django S3 Storage Browser
 
-`ah-django-s3-storage-browser` is a Django app that provides S3 storage browser functionality with AWS credentials management via role assumption. It includes both a storage browser view and an API endpoint for fetching AWS credentials.
-
-## Features
-
-- **Storage Browser View**: A web interface for browsing S3 storage
-- **AWS Credentials API**: RESTful API endpoint for obtaining temporary AWS credentials via role assumption
-- **Permission Management**: Built-in Django permissions for controlling access
-- **Easy Integration**: Simple setup for existing Django projects
+`ah-django-s3-storage-browser` is a Django app that serves the AWS Amplify
+Storage Browser for one S3 bucket. The browser talks to S3 directly with
+short-lived credentials that a Django endpoint mints by assuming an IAM role,
+scoped to that bucket.
 
 ## Installation
 
-### Option 1: Install from Git Repository
-
-Add the following line to your `requirements.txt`:
+Pin a tag in `requirements.txt` — `main` moves:
 
 ```
-git+https://github.com/Canusia/django-s3-storage-bowser.git
+git+https://github.com/Canusia/django-s3-storage-bowser.git@v0.2.0
 ```
-
-Then install:
-
-```bash
-pip install -r requirements.txt
-```
-
-### Option 2: Development Installation
-
-For local development, clone the repository and install in editable mode:
-
-```bash
-git clone https://github.com/Canusia/django-s3-storage-bowser.git
-pip install -e ./django-s3-storage-bowser
-```
-
-## Quick Start
-
-### 1. Add to INSTALLED_APPS
-
-Add `s3_storage_browser` to your Django project's `INSTALLED_APPS` setting:
 
 ```python
 INSTALLED_APPS = [
-    # ... your other apps
+    # ...
     's3_storage_browser',
 ]
 ```
 
-### 2. Configure URLs
-
-#### For Storage Browser View
-
-Include the storage browser view in your project's `urls.py`:
-
 ```python
-from django.urls import path, include
-from s3_storage_browser.views import storage_browser_view
+# urls.py
+from django.urls import include, path
 
 urlpatterns = [
-    # ... your other URL patterns
-    path('admin/storagebrowser/', 
-         storage_browser_view, 
-         {'template_name': 'admin/storage_browser.html'},
-         name='storage_browser_admin'),
+    # ...
+    path('ce/storagebrowser/', include('s3_storage_browser.urls')),
 ]
 ```
 
-#### For AWS Credentials API
-
-Add the API endpoint for AWS credentials:
-
-```python
-from django.urls import path
-from s3_storage_browser.views import AwsCredentialsApiView
-
-urlpatterns = [
-    # ... your other URL patterns
-    path('api/awscreds/', AwsCredentialsApiView.as_view()),
-]
-```
-
-### 3. Environment Variables
-
-Set the required AWS environment variable:
-
-```bash
-export S3_STORAGE_BROWSER_ROLE_ARN=arn:aws:iam::123456789012:role/YourRoleName
-```
-
-The `S3_STORAGE_BROWSER_ROLE_ARN` is required for the AWS Credentials API to assume the specified IAM role.
-
-### 4. Django Settings
-
-Configure your Django settings with the required AWS settings:
-
-```python
-# AWS Configuration
-AWS_STORAGE_BUCKET_NAME = 'your-s3-bucket-name'
-AWS_REGION_NAME = 'us-east-1'  # or your preferred region
-```
-
-### 5. Run Migrations
-
-Apply the database migrations to create the necessary permissions:
+This mounts the page at `ce/storagebrowser/` (`s3_storage_browser:browser`) and
+the credentials API at `ce/storagebrowser/credentials/`
+(`s3_storage_browser:credentials`). The page finds the API by URL name.
 
 ```bash
 python manage.py migrate
+python manage.py collectstatic
 ```
 
-## Usage
+## Settings
 
-### Storage Browser View
+| Setting | Default | Purpose |
+|---|---|---|
+| `AWS_STORAGE_BUCKET_NAME` | — (required) | Bucket the browser shows |
+| `S3_STORAGE_BROWSER_ROLE_ARN` | env var of the same name | IAM role assumed for browser credentials |
+| `S3_STORAGE_BROWSER_SESSION_SECONDS` | `3600` | STS session length |
+| `S3_STORAGE_BROWSER_REGION` | `AWS_S3_REGION_NAME`, then `AWS_REGION_NAME`, then `us-east-1` | Bucket region |
+| `S3_STORAGE_BROWSER_ACCESS_CHECK` | active staff, or the `can_access_s3_storage_browser` permission | Dotted path to `callable(user) -> bool` gating the page **and** the API |
+| `S3_STORAGE_BROWSER_BASE_TEMPLATE` | `s3_storage_browser/standalone.html` | Template the page extends |
+| `S3_STORAGE_BROWSER_EXTRA_CONTEXT` | none | Dotted path to `callable(request) -> dict` merged into the page context |
 
-The storage browser view provides a web interface for browsing S3 storage. It requires staff member permissions and uses the configured S3 bucket.
+### Rendering inside your site's layout
 
-**URL**: `/admin/storagebrowser/`
-**Permission**: Staff member required (`@staff_member_required` decorator)
+`s3_storage_browser/index.html` extends `S3_STORAGE_BROWSER_BASE_TEMPLATE`
+and fills two blocks, so the base must define both:
 
-### AWS Credentials API
+- `{% block title %}`
+- `{% block body %}`
 
-The API endpoint provides temporary AWS credentials by assuming an IAM role for client-side S3 operations.
+Anything your base template needs — a navigation menu, say — comes from
+`S3_STORAGE_BROWSER_EXTRA_CONTEXT`. To place the browser inside a page of your
+own instead, `{% include "s3_storage_browser/_app.html" %}` with
+`s3_storage_browser_config` in the context.
 
-**Endpoint**: `POST /api/awscreds/`
-**Authentication**: Requires authenticated user
-**Response**: JSON object containing temporary AWS credentials from the assumed role
+### MyCE hosts
 
-Example response:
+```python
+# settings.py
+S3_STORAGE_BROWSER_ACCESS_CHECK = 'cis.utils.user_has_cis_role'
+S3_STORAGE_BROWSER_BASE_TEMPLATE = 'cis/logged-base.html'
+S3_STORAGE_BROWSER_EXTRA_CONTEXT = 'myce_tenant_configs.services.storage_browser.storage_browser_context'
+```
+
+```python
+# myce_tenant_configs/services/storage_browser.py
+from cis.menu import cis_menu, draw_menu
+
+
+def storage_browser_context(request):
+    return {'menu': draw_menu(cis_menu, 'storage_browser')}
+```
+
+Migration `0002_add_ce_nav` adds a **File Storage** item to the CE menu
+(`cis.settings.menu`, every campus row). It runs only when `cis` is installed
+and `s3_storage_browser:browser` resolves — so include the URLs **before**
+migrating. If it was skipped, add the item in the menu setting by hand:
+
 ```json
-{
-  "AccessKeyId": "ASIA...",
-  "SecretAccessKey": "...",
-  "SessionToken": "...",
-  "Expiration": "2024-01-01T12:00:00Z"
-}
+{"type": "nav-item", "icon": "fas fa-fw fa-folder-open", "name": "storage_browser", "label": "File Storage", "url": "s3_storage_browser:browser"}
 ```
 
-### Permissions
+## Credentials API
 
-The app creates a custom permission: `can_access_s3_storage_browser`
+`POST` to `s3_storage_browser:credentials` (session + CSRF) returns the STS
+credentials:
 
-You can assign this permission to users or groups through the Django admin interface or programmatically:
-
-```python
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
-
-# Get the permission
-content_type = ContentType.objects.get(app_label='s3_storage_browser', model='globalpermission')
-permission = Permission.objects.get(
-    codename='can_access_s3_storage_browser',
-    content_type=content_type
-)
-
-# Assign to a user
-user.user_permissions.add(permission)
+```json
+{"AccessKeyId": "ASIA...", "SecretAccessKey": "...", "SessionToken": "...", "Expiration": "2026-01-01T12:00:00Z"}
 ```
 
-## Configuration Options
+The session policy allows only `s3:ListBucket`/`s3:GetBucketLocation` on the
+bucket and `s3:GetObject`/`PutObject`/`DeleteObject`/`AbortMultipartUpload`/
+`ListMultipartUploadParts` on its objects. A session policy can only narrow
+the role, never widen it. Callers who fail the access check get 403; AWS
+errors are logged and returned as a generic 502.
 
-### Template Customization
+## Upgrading from 0.1
 
-You can customize the storage browser template by overriding the default template:
+- Static assets moved to `static/s3_storage_browser/`; run `collectstatic`.
+- The page is no longer `@staff_member_required`: unauthenticated users go to
+  `LOGIN_URL`, others failing the access check get 403. The default check
+  still admits staff.
+- The credentials API now applies the same check (it previously admitted any
+  authenticated user).
+- Hosts that mount `storage_browser_view` and `AwsCredentialsApiView` by hand
+  at `/api/awscreds/` keep working; `include('s3_storage_browser.urls')` is
+  preferred.
 
-```python
-# In your URL configuration
-path('admin/storagebrowser/', 
-     storage_browser_view, 
-     {'template_name': 'your_custom_template.html'},
-     name='storage_browser_admin'),
+## Development
+
+```bash
+cd s3_storage_browser_frontend
+npm ci
+npm run build      # tsc + vite → ../s3_storage_browser/static/s3_storage_browser/
+npm run dev        # standalone dev server (config in index.html)
 ```
 
-### AWS Role Assumption Settings
+Django tests run inside a host project that installs the app:
 
-The AWS credentials API uses the STS assume_role operation with default settings (1-hour session duration). The role session name is set to "S3StorageBrowserSession" for tracking purposes. You can customize these parameters by modifying the `AwsCredentialsApiView` class.
-
-## Security Considerations
-
-1. **Environment Variables**: Always use environment variables for AWS credentials, never hardcode them
-2. **Permissions**: Use Django's permission system to control access to the storage browser
-3. **HTTPS**: Always use HTTPS in production when transmitting AWS credentials
-4. **Temporary Credentials**: The API returns temporary credentials from assumed roles with limited lifetime for security
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Missing AWS Credentials**: Ensure `S3_STORAGE_BROWSER_ROLE_ARN` is set
-2. **Permission Denied**: Check that users have the required permissions
-3. **Template Not Found**: Verify template paths and ensure templates are in the correct location
-
-### Error Messages
-
-- `S3_STORAGE_BROWSER_ROLE_ARN environment variable not set`: Set the IAM role ARN environment variable
-- `Permission denied`: User lacks the required permissions to access the storage browser
-
-## Dependencies
-
-- Django >= 4.2
-- boto3
-- djangorestframework
+```bash
+python manage.py test s3_storage_browser
+```
 
 ## License
 
-This project is licensed under the BSD License.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## Support
-
-For issues and questions, please use the GitHub issue tracker.
+BSD.
