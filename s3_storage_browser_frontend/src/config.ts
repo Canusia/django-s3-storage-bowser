@@ -3,6 +3,7 @@ export interface StorageBrowserPageConfig {
   bucket: string;
   region: string;
   credentialsUrl: string;
+  csrfToken: string;
 }
 
 const CONFIG_ELEMENT_ID = 's3-storage-browser-config';

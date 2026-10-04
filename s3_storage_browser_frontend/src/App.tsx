@@ -7,7 +7,7 @@ import { readConfig } from './config';
 import { createCredentialsProvider } from './credentials';
 
 const CONFIG = readConfig();
-const getCredentials = createCredentialsProvider(CONFIG.credentialsUrl);
+const getCredentials = createCredentialsProvider(CONFIG.credentialsUrl, CONFIG.csrfToken);
 
 // Created once: building it inside render would remount the browser (and
 // drop its navigation state) on every re-render.

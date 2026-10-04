@@ -8,21 +8,11 @@ export interface Credentials {
 // Refetch this long before the server-reported expiry.
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
-const getCookie = (name: string): string | null => {
-  for (const cookie of document.cookie ? document.cookie.split(';') : []) {
-    const trimmed = cookie.trim();
-    if (trimmed.startsWith(`${name}=`)) {
-      return decodeURIComponent(trimmed.substring(name.length + 1));
-    }
-  }
-  return null;
-};
-
 /**
  * Returns a function that yields valid credentials from the Django endpoint,
  * reusing the last set until it is about to expire.
  */
-export const createCredentialsProvider = (credentialsUrl: string) => {
+export const createCredentialsProvider = (credentialsUrl: string, csrfToken: string) => {
   let cached: Credentials | undefined;
   let inFlight: Promise<Credentials> | undefined;
 
@@ -32,7 +22,7 @@ export const createCredentialsProvider = (credentialsUrl: string) => {
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken') ?? '',
+        'X-CSRFToken': csrfToken,
       },
     });
     if (!response.ok) {

@@ -2,6 +2,7 @@ import copy
 import json
 import os
 import re
+from unittest import mock
 
 from django.conf import settings
 from django.test import TestCase, override_settings
@@ -71,11 +72,29 @@ class StorageBrowserViewTests(TestCase):
 
     def test_config_carries_bucket_region_and_credentials_url(self):
         resp = self.get_as(make_user(is_staff=True))
-        self.assertEqual(self.config(resp), {
+        config = self.config(resp)
+        config.pop('csrfToken')
+        self.assertEqual(config, {
             'bucket': BUCKET,
             'region': 'eu-west-1',
             'credentialsUrl': '/storagebrowser/credentials/',
         })
+
+    @override_settings(CSRF_COOKIE_NAME='tenant_csrftoken',
+                       S3_STORAGE_BROWSER_ROLE_ARN='arn:aws:iam::1:role/x')
+    def test_config_csrf_token_authorises_the_credentials_post(self):
+        # The bundle must not guess the CSRF cookie name (tenants rename it).
+        self.client = self.client_class(REMOTE_ADDR='127.0.0.1', enforce_csrf_checks=True)
+        config = self.config(self.get_as(make_user(is_staff=True)))
+        with mock.patch('s3_storage_browser.views.boto3.client') as boto_client:
+            boto_client.return_value.assume_role.return_value = {'Credentials': {
+                'AccessKeyId': 'a', 'SecretAccessKey': 'b', 'SessionToken': 'c',
+                'Expiration': '2030-01-01T00:00:00Z'}}
+            refused = self.client.post(config['credentialsUrl'])
+            allowed = self.client.post(config['credentialsUrl'],
+                                       HTTP_X_CSRFTOKEN=config['csrfToken'])
+        self.assertEqual(refused.status_code, 403)
+        self.assertEqual(allowed.status_code, 200)
 
     @override_settings(S3_STORAGE_BROWSER_REGION='us-west-2')
     def test_region_setting_wins(self):

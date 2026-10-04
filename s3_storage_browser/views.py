@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import render
 from django.urls import NoReverseMatch, reverse
 from django.utils.module_loading import import_string
@@ -61,6 +62,8 @@ def storage_browser_view(request, template_name='s3_storage_browser/index.html')
             'bucket': settings.AWS_STORAGE_BUCKET_NAME,
             'region': _region(),
             'credentialsUrl': _credentials_url(),
+            # Handed over directly: tenants rename the CSRF cookie.
+            'csrfToken': get_token(request),
         },
     }
     extra_context = getattr(settings, 'S3_STORAGE_BROWSER_EXTRA_CONTEXT', None)
